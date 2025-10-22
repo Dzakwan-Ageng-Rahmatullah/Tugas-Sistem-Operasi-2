@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pemahaman Sistem Operasi: Batch System, Critical Section, dan Lainnya</title>
+  <meta name="description" content="Artikel pengantar tentang Batch System, Critical Section, Process Control Block, Distributed Processing, Handheld, dan Thread. Siap dipublish ke blog." />
+  <meta name="author" content="Dzakwan" />
+
+  <!-- Basic styles - self-contained -->
+  <style>
+    :root{
+      --bg: #ffffff;
+      --card: #f6f7f9;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #c2410c; /* warm orange */
+      --accent-2: #2b6cb0;
+      --radius: 12px;
+      --maxw: 900px;
+    }
+    [data-theme="dark"]{
+      --bg: #0b1220;
+      --card: #071021;
+      --text: #e6eef8;
+      --muted: #9aa8bf;
+      --accent: #ff8b5a;
+      --accent-2: #4fb3ff;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg) 95%, #eef2ff 5%));
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.5;
+    }
+
+    .wrap{
+      max-width: calc(var(--maxw) + 320px);
+      margin:36px auto;
+      padding:24px;
+    }
+
+    header.blog-header{
+      display:flex;
+      gap:20px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:18px;
+    }
+
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      text-decoration:none;
+      color:inherit;
+    }
+    .logo{
+      width:56px;
+      height:56px;
+      border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:grid;
+      place-items:center;
+      color:white;
+      font-weight:700;
+      box-shadow:0 6px 18px rgba(0,0,0,0.12);
+      flex:0 0 56px;
+    }
+    h1.title{
+      margin:0;
+      font-size:1.35rem;
+      letter-spacing:-0.2px;
+    }
+    p.lead{
+      margin:6px 0 0 0;
+      color:var(--muted);
+      font-size:0.95rem;
+    }
+
+    main.content {
+      display:grid;
+      grid-template-columns: 1fr 300px;
+      gap:20px;
+      align-items:start;
+    }
+
+    article.post{
+      background:var(--card);
+      padding:22px;
+      border-radius:var(--radius);
+      box-shadow: 0 6px 20px rgba(2,6,23,0.06);
+    }
+
+    .meta {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:8px;
+      color:var(--muted);
+      font-size:0.9rem;
+    }
+
+    .toc {
+      position:sticky;
+      top:26px;
+      align-self:start;
+    }
+
+    nav.tocbox{
+      background:var(--card);
+      padding:14px;
+      border-radius:10px;
+      box-shadow:0 4px 12px rgba(2,6,23,0.04);
+      font-size:0.95rem;
+    }
+    nav.tocbox h3{ margin:0 0 10px 0; font-size:1rem; }
+    nav.tocbox ul{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+    nav.tocbox a{
+      color:var(--accent-2);
+      text-decoration:none;
+      display:block;
+      padding:6px 8px;
+      border-radius:8px;
+      transition:background .12s;
+      color:var(--text);
+    }
+    nav.tocbox a:hover{ background: rgba(0,0,0,0.04); }
+
+    section.article-section{
+      margin-bottom:18px;
+    }
+    section.article-section h2{
+      margin:0 0 8px 0;
+      font-size:1.05rem;
+      color:var(--accent-2);
+    }
+    section.article-section p{ margin:0 0 10px 0; color:var(--text); }
+    .example{
+      background:linear-gradient(180deg, rgba(0,0,0,0.01), rgba(0,0,0,0.02));
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid rgba(0,0,0,0.03);
+      color:var(--muted);
+      font-size:0.95rem;
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-top:10px;
+      flex-wrap:wrap;
+    }
+    button.btn{
+      border:0;
+      background:var(--accent);
+      color:white;
+      padding:8px 12px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow:0 6px 16px rgba(0,0,0,0.12);
+    }
+    button.btn.secondary{
+      background:transparent;
+      color:var(--text);
+      border:1px solid rgba(0,0,0,0.06);
+      box-shadow:none;
+    }
+    .muted{ color:var(--muted); font-size:0.9rem; }
+
+    footer.page-footer{
+      margin-top:18px;
+      text-align:center;
+      font-size:0.92rem;
+      color:var(--muted);
+    }
+
+    /* progress bar */
+    #progress {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      height: 4px;
+      background: linear-gradient(90deg,var(--accent),var(--accent-2));
+      width:0%;
+      z-index:9999;
+      border-top-right-radius:6px;
+      border-top-left-radius:6px;
+    }
+
+    /* responsive */
+    @media (max-width:1024px){
+      main.content{ grid-template-columns: 1fr 260px; }
+      nav.tocbox{ font-size:0.9rem; }
+    }
+    @media (max-width:760px){
+      .wrap{ padding:12px; }
+      main.content{ grid-template-columns: 1fr; }
+      .toc{ order:2; margin-top:14px; }
+      .logo{ width:44px; height:44px; }
+    }
+
+    /* print styling */
+    @media print{
+      body{ background:white; color:black; }
+      header, .toc, .controls, footer.page-footer { display:none !important; }
+      article.post{ box-shadow:none; border-radius:0; padding:0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress" aria-hidden="true"></div>
+
+  <div class="wrap" id="page">
+    <header class="blog-header" role="banner">
+      <a class="brand" href="#" onclick="event.preventDefault()">
+        <div class="logo" aria-hidden="true">OS</div>
+        <div>
+          <h1 class="title">Pemahaman Sistem Operasi: Batch System, Critical Section, dan Lainnya</h1>
+          <p class="lead">Ringkasan konsep penting manajemen proses untuk tugas kuliah — siap dipublikasikan ke blog.</p>
+        </div>
+      </a>
+
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="muted" style="text-align:right;">
+          <div>Ditulis oleh <strong>Dzakwan</strong></div>
+          <div style="font-size:0.82rem;color:var(--muted)">Tanggal: <span id="dateLabel"></span></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;margin-left:8px;">
+          <button class="btn" id="toggleTheme" title="Toggle dark / light">Toggle Theme</button>
+          <button class="btn secondary" id="shareBtn" title="Bagikan artikel">Share</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" role="main">
+      <article class="post" id="article" aria-labelledby="articleTitle">
+        <h2 id="articleTitle" style="margin-top:0">Tugas Sistem Operasi 2</h2>
+
+        <p class="meta"><span class="muted">Topik:</span>&nbsp;Manajemen Proses — Sistem Operasi &nbsp;•&nbsp; <span class="muted">Format:</span>&nbsp;Artikel blog pendidikan</p>
+
+        <section class="article-section" id="intro">
+          <h2>Pengantar</h2>
+          <p>Dalam artikel ini kita akan mempelajari beberapa konsep penting pada sistem operasi yang sering muncul dalam mata kuliah manajemen proses. Setiap konsep dijelaskan singkat beserta contoh nyata yang mudah dipahami.</p>
+        </section>
+
+        <section class="article-section" id="batch-system">
+          <h2>1. Batch System</h2>
+          <p><strong>Pengertian:</strong> Batch system adalah dimana job-job yang mirip dikumpulkan dan dijalankan secara kelompok kemudian setelah kelompok yang dijalankan tadi selesai maka secara otomatis kelompok lain dijalankan. jadi dengan kata lain adalah teknologi proses komputer dari generasi ke-2. yang jika suatu tugas sedang dikerjakan pada 1 rangkaian, akan di eksekusi secara berurutan. Pada komputer generasi ke-2 sistem komputer nya maasih blum dilengkapi oleh sebuah sistem operasi. But, dalan beberapa fungsi sistem operasi, seperti os yang tengah berkembang pada jaman sekarang ini. Contohnya adlah FMS ( Fortarn Monitoring System ) dan IBSYS.</p>
+          <div class="example"><strong>Contoh:</strong> Pemrosesan data gaji karyawan di perusahaan — semua data dikumpulkan selama sebulan, kemudian diproses sekaligus untuk menghasilkan slip gaji dan laporan.</div>
+        </section>
+
+        <section class="article-section" id="critical-section">
+          <h2>2. Critical Section</h2>
+          <p><strong>Pengertian:</strong> Critical section adalah bagian dari kode yang mengakses atau memodifikasi sumber daya bersama. Ketika sebuah proses atau thread berada di dalam critical section, proses atau thread lain tidak boleh mengakses sumber daya tersebut. Jika tidak, dapat terjadi race condition, di mana hasil akhir dari program bergantung pada urutan eksekusi proses atau thread yang tidak dapat diprediksi. Hal ini dapat mengakibatkan hasil yang tidak konsisten atau tidak diinginkan.</p>
+          <div class="example"><strong>Contoh:</strong> Dua thread menulis ke file log yang sama; perlu mekanisme sinkronisasi agar penulisan tidak saling tumpang tindih.</div>
+        </section>
+
+        <section class="article-section" id="pcb">
+          <h2>3. Process Control Block (PCB)</h2>
+          <p><strong>Pengertian:</strong> Blok Kontrol Proses (PCB) adalah struktur data yang digunakan sistem operasi untuk menyimpan semua informasi penting tentang suatu proses, seperti statusnya, register CPU, informasi penjadwalan, dan memori yang dialokasikan. PCB bertindak sebagai 'kartu identitas' untuk setiap proses, memungkinkan sistem operasi untuk mengelola, menjadwalkan, dan beralih di antara proses-proses yang berjalan secara efisien, terutama dalam sistem multitasking.</p>
+          <div class="example"><strong>Contoh:</strong> Saat membuka browser dan editor teks bersamaan, sistem membuat PCB untuk masing-masing sehingga dapat melakukan context switching dengan benar.</div>
+        </section>
+
+        <section class="article-section" id="distributed-processing">
+          <h2>4. Distributed Processing</h2>
+          <p><strong>Pengertian:</strong> Secara sederhana, dapat dipahami bahwa distributed processing adalah berbagai sistem komputer yang melibatkan lebih dari satu komputer (atau terkadang prosesor) untuk menjalankan suatu aplikasi. Tidak hanya itu, suatu sistem yang melibatkan penggunaan komputer tunggal dengan beberapa CPU sekaligus untuk menjalankan program (sistem paralel), juga masuk dalam distributed processing ini.cDistributed processing merupakan suatu tugas komputasi yang sangat kompleks. Tugas tersebut dibagi ke beberapa jaringan mesin individu, yang kemudian menyelesaikan bagiannya masing-masing. Setelah bagian tugas selesai, akan langsung dikirimkan kembali untuk dikompilasi menjadi satu output yang utuh.</p>
+          <div class="example"><strong>Contoh:</strong> Search engine besar memanfaatkan ribuan server untuk memproses permintaan pencarian pengguna secara paralel.</div>
+        </section>
+
+        <section class="article-section" id="handheld">
+          <h2>5. Handheld System</h2>
+          <p><strong>Pengertian:</strong> Handheld system, atau sistem genggam, adalah perangkat elektronik yang berukuran kecil sehingga dapat dipegang dan dibawa dengan satu atau kedua tangan. Contohnya termasuk komputer genggam (komputer portabel), konsol permainan (game konsol), dan pemindai genggam (scanner). Perangkat ini memiliki fungsi serupa komputer tetapi lebih portabel, dilengkapi dengan berbagai teknologi nirkabel seperti Bluetooth dan Wi-Fi, serta sering kali menggunakan baterai yang dapat diisi ulang.</p>
+          <div class="example"><strong>Contoh:</strong> Android dan iOS — sistem operasi handheld populer yang mendukung banyak aplikasi mobile.</div>
+        </section>
+
+        <section class="article-section" id="thread">
+          <h2>6. Thread</h2>
+          <p><strong>Pengertian:</strong> Thread merupakan sebuah status eksekusi (running, ready, dll.), sering disebut dengan lightweight process. Merupakan unit dasar dari penggunaan CPU, yang terdiri dari thread_id, program counter, register set, dan stack. Sebuah thread berbagi code section, data section, dan sumber daya sistem operasi dengan Thread lain yang dimiliki oleh proses yang sama.</p>
+          <div class="example"><strong>Contoh:</strong> Browser yang memiliki thread terpisah untuk rendering, menangani input, dan mengunduh data.</div>
+        </section>
+
+        <section class="article-section" id="conclusion">
+          <h2>Penutup</h2>
+          <p>Memahami konsep-konsep di atas membantu kita mengerti bagaimana sistem operasi mengatur proses, sumber daya, dan mencegah konflik. Gunakan contoh nyata sebagai bahan untuk memperkaya artikel blogmu dan menambahkan studi kasus sederhana bila perlu.</p>
+
+        </section>
+      </article>
+
+      <aside class="toc" aria-label="Daftar Isi">
+        <nav class="tocbox" role="navigation" aria-labelledby="tocTitle">
+          <h3 id="tocTitle">Daftar Isi</h3>
+          <ul>
+            <li><a href="#intro">Pengantar</a></li>
+            <li><a href="#batch-system">Batch System</a></li>
+            <li><a href="#critical-section">Critical Section</a></li>
+            <li><a href="#pcb">Process Control Block (PCB)</a></li>
+            <li><a href="#distributed-processing">Distributed Processing</a></li>
+            <li><a href="#handheld">Handheld System</a></li>
+            <li><a href="#thread">Thread</a></li>
+            <li><a href="#conclusion">Penutup</a></li>
+          </ul>
+        </nav>
+      </aside>
+    </main>
+
+    <footer class="page-footer" role="contentinfo">
+      <div>© <span id="year"></span> Dzakwan — Artikel ini bisa kamu edit sebelum dipublikasikan ke blog pribadi.</div>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // Fill date and year
+    (function(){
+      const now = new Date();
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('dateLabel').textContent = now.toLocaleDateString('id-ID', options);
+      document.getElementById('year').textContent = now.getFullYear();
+    })();
+
+    // Theme toggle with localStorage
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('toggleTheme');
+    const stored = localStorage.getItem('pref-theme');
+    if(stored === 'dark') root.setAttribute('data-theme','dark');
+
+    themeBtn.addEventListener('click', () => {
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      if(isDark){
+        root.removeAttribute('data-theme');
+        localStorage.setItem('pref-theme', 'light');
+      } else {
+        root.setAttribute('data-theme','dark');
+        localStorage.setItem('pref-theme', 'dark');
+      }
+    });
+
+    // Smooth scroll for TOC
+    document.querySelectorAll('nav.tocbox a').forEach(a=>{
+      a.addEventListener('click', e=>{
+        e.preventDefault();
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if(!el) return;
+        const top = el.getBoundingClientRect().top + window.scrollY - 24;
+        window.scrollTo({ top, behavior: 'smooth' });
+      });
+    });
+
+    // Copy content to clipboard (article text)
+    document.getElementById('copyBtn').addEventListener('click', async ()=>{
+      const article = document.getElementById('article');
+      // build plain text version preserving headings
+      let text = '';
+      article.querySelectorAll('h2').forEach(h=> text += h.textContent + '\\n');
+      article.querySelectorAll('p, .example').forEach(p=>{
+        text += p.textContent + '\\n\\n';
+      });
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Isi artikel berhasil disalin ke clipboard. Kamu bisa paste ke editor blogmu.');
+      } catch (err) {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        alert('Isi artikel berhasil disalin (fallback).');
+      }
+    });
+
+    // Download full page as standalone HTML
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      const html = '<!doctype html>\\n' + document.documentElement.outerHTML;
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'artikel-sistem-operasi.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Print button
+    document.getElementById('printBtn').addEventListener('click', ()=> window.print());
+
+    // Share (web native or fallback)
+    const shareBtn = document.getElementById('shareBtn');
+    shareBtn.addEventListener('click', async ()=>{
+      const title = document.title;
+      const text = 'Baca artikel: ' + title;
+      // If page is not hosted, navigator.share may still work with text only.
+      try {
+        if (navigator.share) {
+          await navigator.share({ title, text, url: location.href });
+        } else {
+          // fallback: copy url
+          await navigator.clipboard.writeText(location.href);
+          alert('URL artikel disalin ke clipboard. (Tidak ada support Web Share pada browser ini.)');
+        }
+      } catch (err) {
+        alert('Gagal membagikan artikel: ' + (err && err.message ? err.message : err));
+      }
+    });
+
+    // Reading progress bar
+    const progress = document.getElementById('progress');
+    const docHeight = () => Math.max(
+      document.body.scrollHeight, document.documentElement.scrollHeight,
+      document.body.offsetHeight, document.documentElement.offsetHeight,
+      document.body.clientHeight, document.documentElement.clientHeight
+    );
+    window.addEventListener('scroll', ()=>{
+      const st = window.scrollY || window.pageYOffset;
+      const total = docHeight() - window.innerHeight;
+      const pct = (st / total) * 100;
+      progress.style.width = Math.min(100, Math.max(0, pct)) + '%';
+    });
+
+    // Accessibility: allow keyboard focusing for TOC links (outline visible)
+    document.addEventListener('keyup', (e)=>{
+      if(e.key === 'Tab'){
+        document.body.classList.add('show-focus-outline');
+      }
+    });
+  </script>
+</body>
+</html>
